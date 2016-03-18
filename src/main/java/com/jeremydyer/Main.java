@@ -4,7 +4,6 @@ import org.apache.nifi.remote.Transaction;
 import org.apache.nifi.remote.TransferDirection;
 import org.apache.nifi.remote.client.SiteToSiteClient;
 import org.apache.nifi.remote.client.SiteToSiteClientConfig;
-import org.apache.nifi.remote.exception.ProtocolException;
 import org.apache.nifi.spark.NiFiDataPacket;
 import org.apache.nifi.spark.NiFiReceiver;
 import org.apache.spark.SparkConf;
@@ -24,64 +23,39 @@ import java.util.HashMap;
  */
 public class Main {
 
+    private static SiteToSiteClient dataToSparkClient = null;
+
     public static void main(String[] args) throws IOException {
 
-        SiteToSiteClient.Builder builder = new SiteToSiteClient.Builder();
-        SiteToSiteClientConfig config = builder
-                .url("http://10.0.1.28:8080/nifi")
-                .portName("Data For Spark")
-                .buildConfig();
-
-        SiteToSiteClientConfig toNiFiConfig = builder
+        SiteToSiteClientConfig dataToSparkConfig = new SiteToSiteClient.Builder()
                 .url("http://10.0.1.28:8080/nifi")
                 .portName("Data From Spark")
                 .buildConfig();
 
-        SiteToSiteClient client = builder.fromConfig(toNiFiConfig).build();
-        final Transaction transaction = client.createTransaction(TransferDirection.SEND);
-        if (transaction == null) {
-            System.err.println("Unable to create a NiFi Transaction to send data");
-        }
+        dataToSparkClient = new SiteToSiteClient.Builder().fromConfig(dataToSparkConfig).build();
 
-        //Bytes would be your flowfile content and map would be your desired flowfile attributes.
-        transaction.send("Hello Jeremy".getBytes(), new HashMap<String, String>());
+        final Transaction transaction = dataToSparkClient.createTransaction(TransferDirection.SEND);
+        transaction.send("Jeremy Hello".getBytes(), new HashMap<String, String>());
         transaction.confirm();
         transaction.complete();
 
-        System.out.println("Data should be written to NiFi by now");
 
+        SiteToSiteClientConfig dataFromSparkConfig = new SiteToSiteClient.Builder()
+                .url("http://10.0.1.28:8080/nifi")
+                .portName("Data For Spark")
+                .buildConfig();
 
         SparkConf sparkConf = new SparkConf().setAppName("NiFi-Spark Streaming example");
         JavaStreamingContext ssc = new JavaStreamingContext(sparkConf, new Duration(10000L));
-        // Create a JavaReceiverInputDStream using a NiFi receiver so that we can pull data from
-        // specified Port
-
-        JavaReceiverInputDStream packetStream = ssc.receiverStream(new NiFiReceiver(config, StorageLevel.MEMORY_ONLY()));
+        JavaReceiverInputDStream packetStream = ssc.receiverStream(new NiFiReceiver(dataFromSparkConfig, StorageLevel.MEMORY_ONLY()));
 
         JavaDStream text = packetStream.map(new Function<NiFiDataPacket, String>() {
             public String call(final NiFiDataPacket dataPacket) throws Exception {
-                System.out.println("Mapping NiFi Data ...");
                 return new String(dataPacket.getContent(), StandardCharsets.UTF_8);
             }
         });
 
-//        // Map the data from NiFi to text, ignoring the attributes
-//        JavaDStream text = packetStream.map(new Function() {
-//            public String call(final NiFiDataPacket dataPacket) throws Exception {
-//                return new String(dataPacket.getContent(), StandardCharsets.UTF_8);
-//            }
-//        });
-
         text.print();
-
-        System.out.println("Data from NiFi ->" + text);
-
-//        // Extract the 'uuid' attribute
-//        JavaDStream text = packetStream.map(new Function() {
-//            public String call(final NiFiDataPacket dataPacket) throws Exception {
-//                return dataPacket.getAttributes().get("uuid");
-//            }
-//        });
 
         System.out.println("Spark Streaming successfully initialized");
         ssc.start();

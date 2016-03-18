@@ -47,25 +47,25 @@ public class Train {
 
         System.out.println("\n\n*********** Training **************\n\n");
 
-        //Prep the raw data for training
-        JavaRDD<LabeledPoint> training_labeled = allData.map(new Function<String, Object>() {
-            public Object call(String v1) throws Exception {
-                return null;
-            }
-        });
-
-        NaiveBayes.train(training_labeled, 1.0);
-
-        System.out.println("\n\n*********** Testing **************\n\n");
-
-        sc.stop();
-        System.out.println("\n\n********* Stopped Spark Context succesfully, exiting ********");
+//        //Prep the raw data for training
+//        JavaRDD<LabeledPoint> training_labeled = allData.map(new Function<String, Object>() {
+//            public Object call(String v1) throws Exception {
+//                return null;
+//            }
+//        });
+//
+//        NaiveBayes.train(training_labeled, 1.0);
+//
+//        System.out.println("\n\n*********** Testing **************\n\n");
+//
+//        sc.stop();
+//        System.out.println("\n\n********* Stopped Spark Context succesfully, exiting ********");
     }
 
-    private String[] toLabels(String line) {
-        String[] parts = StringUtils.split(line, ",");
-
-    }
+//    private String[] toLabels(String line) {
+//        String[] parts = StringUtils.split(line, ",");
+//
+//    }
 
     private void featurize(String line) {
         //tf.transform
@@ -78,7 +78,7 @@ public class Train {
     private String[] loadStopWords(String path) {
         try {
             List<String> li =  IOUtils.readLines(Train.class.getResourceAsStream(path));
-            String[] lines = new String[l.size()];
+            String[] lines = new String[li.size()];
             for (int i = 0; i < li.size(); i++) {
                 lines[i] = li.get(i);
             }
